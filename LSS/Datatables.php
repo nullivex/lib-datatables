@@ -25,6 +25,7 @@
  * License:   GPL v2 or BSD (3-point)
  */
 namespace LSS;
+use \Exception;
 
 //usage
 /*
@@ -137,9 +138,17 @@ class Datatables {
 		return mda_get($this->params,$key);
 	}
 
+	public function getJSON(){
+		return json_encode($this->result);
+	}
+
+	public function getResult(){
+		return $this->result;
+	}
+
 	public function setupFromRequest(){
 		//params
-		$this->setParam('echo',req('sEcho'));
+		$this->setParam('sEcho',req('sEcho'));
 		//paging
 		$this->setupPaging(req('iDisplayStart'),req('iDisplayLength'));
 		//ordering
@@ -259,7 +268,7 @@ class Datatables {
 		return $this;
 	}
 
-	public function setQueries(){
+	public function setupQueries(){
 		$this->sql_query =
 			'SELECT SQL_CALC_FOUND_ROWS '.implode(',',$this->columns)
 			.' FROM '.$this->table
@@ -277,20 +286,18 @@ class Datatables {
 		$count_results = $this->db->fetch($this->sql_query_length);
 		$count_total = $this->db->fetch($this->sql_query_total_length);
 		//setup result array
-		$this->result = array(
-			 'sEcho'					=>		$this->getParam('echo')
-			,'iTotalRecords'			=>		$count_total
-			,'iTotalDisplayRecords'		=>		$count_results
-			,'aaData'					=>		array()
+		$this->result = array_merge(
+			$this->params
+			,array(
+				 'iTotalRecords'			=>		$count_total
+				,'iTotalDisplayRecords'		=>		$count_results
+				,'aaData'					=>		array()
+			)
 		);
 		//use openlss/lib-datamodel to format output
 		foreach($results as $row)
 			$this->result['aaData'][] = $this->datamodel::setup($row)->_getAll();
 		return $this;
-	}
-
-	public function getJSON(){
-		return json_encode($this->result);
 	}
 
 	public function __toString(){
