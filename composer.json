@@ -27,7 +27,7 @@
 		,"openlss/lib-db":			"dev-master"
 		,"openlss/lib-datamodel":	"dev-master"
 		,"openlss/func-mda":		"dev-master"
-		,'openlss/func-mda-glob":	"dev-master"
+		,"openlss/func-mda-glob":	"dev-master"
 	}
 	,"autoload": {
 		"psr-0": {
