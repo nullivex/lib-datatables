@@ -24,10 +24,10 @@
 	]
 	,"require": {
 		 "php":						">=5.3.2"
-		,"openlss/lib-db":			"dev-master"
-		,"openlss/lib-datamodel":	"dev-master"
-		,"openlss/func-mda":		"dev-master"
-		,"openlss/func-mda-glob":	"dev-master"
+		,"openlss/lib-db":			"~0.0.1"
+		,"openlss/lib-datamodel":	"~0.0.1"
+		,"openlss/func-mda":		"~0.0.1"
+		,"openlss/func-mda-glob":	"~0.0.1"
 	}
 	,"autoload": {
 		"psr-0": {
