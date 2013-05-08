@@ -8,8 +8,9 @@ This document assumes you have a working datatables frontend. Just point it to t
 Usage
 ===
 
+This is the standard usage which builds and executes queries on the provided Db object.
 ```php
-$obj = Datatables::_get()
+$obj = DataTables::_get()
 	->setDB(Db::_get()) //add our database object
 	->setDataModel('\BrowserModel')	//set datamodel to use for row formatting
 	->setColumns(array('engine','browser','platform','version','grade')) //set column defs
@@ -18,6 +19,18 @@ $obj = Datatables::_get()
 	->setupFromRequest() //setup the object from $_REQUEST
 	->process(); //process the request
 echo $obj; //uses __toString to output json
+exit;
+```
+
+This is the alternative syntax where a Data Callback function is defined
+```php
+$obj = DataTables::_get()
+	->setDataCallback('my_data_function')
+	->setDataModel('\BrowserModel')	//set datamodel to use for row formatting
+	->setColumns(array('engine','browser','platform','version','grade')) //set column defs
+	->setupFromRequest() //setup the object from $_REQUEST
+	->process(); //process the request
+echo $obj;
 exit;
 ```
 
@@ -54,6 +67,20 @@ Set the primary column name (can be an array for multiple columns)
 ### ($this) DataTables::setTable($val)
 Set the database table to use (can be multiple just separate with commas)
 NOTE: currently does not support joins
+
+### ($this) DataTables::setDataCallback($callback,[$arg1,$arg2...])
+Set the data callback function to provide data rather than direct DB querying
+The proper return is a 3-part array consisting of
+ * $result_array	The results in an array
+ * $count_results	Count of the results returned
+ * $count_total		Total count of records
+Example callback function
+```php
+function my_callback_function($columns,$where,$order_by,$limit,$arg1,$arg2){
+	//execute query here
+	return array($results,$count_results,$count_total);
+}
+```
 
 ### ($this) DataTables::setDataModel($val)
 Set the datamodel class to use. By Default uses \LSS\DataModel with no extensions

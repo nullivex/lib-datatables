@@ -29,7 +29,7 @@ use \Exception;
 
 //usage
 /*
-$obj = Datatables::_get()
+$obj = DataTables::_get()
 	->setDB(Db::_get()) //add our database object
 	->setDataModel('\BrowserModel')	//set datamodel to use for row formatting
 	->setColumns(array('engine','browser','platform','version','grade')) //set column defs
@@ -51,12 +51,16 @@ class BrowserModel extends \LSS\DataModel {
 }
 */
 
-class Datatables {
+class DataTables {
 
 	//general settings for result
 	public $params = array();
 	//database object to use
 	public $db = null;
+	//data callback
+	public $data_callback = null;
+	//data callback additional args
+	public $data_callback_args = array();
 	//datamodel
 	public $datamodel = '\LSS\DataModel';
 	//columns to iterate
@@ -69,8 +73,6 @@ class Datatables {
 	public $table = 'datatable';
 	//sql limit part
 	public $sql_limit = null;
-	//sql limit args
-	public $sql_limit_args = array();
 	//sql order part
 	public $sql_order = null;
 	//sql where part
@@ -111,6 +113,13 @@ class Datatables {
 		return $this;
 	}
 
+	public function setDataCallback(){
+		$args = func_get_args();
+		$this->data_callback = array_shift($args);
+		$this->data_callback_args = $args;
+		return $this;
+	}
+
 	public function setDataModel($val){
 		$this->datamodel = $val;
 		return $this;
@@ -121,6 +130,10 @@ class Datatables {
 		return $this;
 	}
 
+	public function getColumns(){
+		return $this->columns;
+	}
+
 	public function getColumnCount(){
 		if(is_null($this->column_count))
 			$this->column_count = count($this->columns);
@@ -128,10 +141,16 @@ class Datatables {
 	}
 
 	public function getColumnByKey($key){
-		$rv = mda_get($this->columns,$key);
-		if(!is_null($rv))
+		if(!isset($this->columns[$key]))
 			throw new Exception('Tried to get a column that doesnt exist: '.$key);
-		return $rv;
+		return $this->columns[$key];
+	}
+
+	public function getColumnsAsKeys(){
+		$arr = array();
+		foreach($this->columns AS $col)
+			$arr[$col] = null;
+		return $arr;
 	}
 
 	public function getParam($key){
@@ -152,7 +171,7 @@ class Datatables {
 		//paging
 		$this->setupPaging(req('iDisplayStart'),req('iDisplayLength'));
 		//ordering
-		if(!is_null(req('iSortCol_0')){
+		if(!is_null(req('iSortCol_0'))){
 			$args = array(req('iSortingCols'));
 			for($i=0;$i<intval(req('iSortingCols'));$i++){
 				$args[] = req('bSortable_'.intval(req('iSortCol_'.$i)));
@@ -162,7 +181,7 @@ class Datatables {
 			call_user_func_array(array($this,'setupOrdering'),$args);
 		}
 		//filtering
-		if(!is_null(req('sSearch')){
+		if(!is_null(req('sSearch'))){
 			$args = array(req('sSearch'));
 			for($i=0;$i<$this->getColumnCount();$i++){
 				$args[] = req('bSearchable_'.$i);
@@ -172,13 +191,13 @@ class Datatables {
 		}
 		//queries
 		$this->setupQueries();
+		return $this;
 	}
 
 	public function setupPaging($start=null,$length=null){
 		if(is_null($start) || is_null($length) || $length == '-1')
 			return $this;
-		$this->sql_limit = 'LIMIT ?,?';
-		$this->sql_limit_args = array($start,$length);
+		$this->sql_limit = ' LIMIT '.$start.','.$length.' ';
 		return $this;
 	}
 
@@ -194,7 +213,7 @@ class Datatables {
 		//grab number of columns (first argument)
 		$cols = array_shift($args);
 		if(!$cols) return $this;
-		$this->sql_order = 'ORDER BY ';
+		$this->sql_order = ' ORDER BY ';
 		for($i=0;$i<intval($cols);$i++){
 			//grab arguments for this col
 			$sortable = array_shift($args);
@@ -203,13 +222,13 @@ class Datatables {
 			//check if we are sorting this column
 			if($sortable != "true") continue;
 			//build SQL for sorting
-			$this->sql_order .= $this->getColumnByKey($col_key);
-			$this->sql_order .= ($sort_dir === 'asc') ? 'asc' : 'desc').',';
+			$this->sql_order .= '`'.$this->getColumnByKey($col_key).'`';
+			$this->sql_order .= ($sort_dir === 'asc' ? 'asc' : 'desc').',';
 		}
 		//trim excess commas and space
-		$this->sql_order = trim(rtrim($this->sql_order,','));
+		$this->sql_order = trim(rtrim($this->sql_order,',')).' ';
 		//if nothing got appended clear the clause (more of a fail-safe)
-		if($this->sql_order == 'ORDER BY')
+		if($this->sql_order == 'ORDER BY ')
 			$this->sql_order = null;
 		return $this;
 	}
@@ -235,32 +254,32 @@ class Datatables {
 		$global_search_args = $ind_search_args = array();
 		//global filtering
 		if(!empty($search_string)){
-			$global_search = 'WHERE (';
+			$global_search = ' WHERE (';
 			for($i=0;$i<$this->getColumnCount();$i++){
 				//check if we can search this column
 				$col_searchable[$i] = array_shift($args);
 				$col_search[$i] = array_shift($args);
 				if($col_searchable[$i] !== 'true') continue;
 				//build SQL to searh this column
-				$global_search .= $this->getColumnByKey($i).' LIKE \'%?%\' OR ';
-				$global_search_args[] = $search_string;
+				$global_search .= '`'.$this->getColumnByKey($i).'` LIKE ? OR ';
+				$global_search_args[] = '%'.$search_string.'%';
 			}
 			//trim excess OR stmts
-			$global_search = trim(rtrim($this->sql_where,'OR '));
+			$global_search = trim(rtrim($global_search,'OR '));
 			//close pars
-			$global_search .= ')';
+			$global_search .= ') ';
 		}
 		//individual column filtering
 		for($i=0;$i<$this->getColumnCount();$i++){
-			if($col_searchable[$i] !== 'true' || empty($col_search[$i])) continue;
+			if(!isset($col_searchable[$i]) || $col_searchable[$i] !== 'true' || empty($col_search[$i])) continue;
 			//setup our where string
 			if(is_null($global_search) && is_null($ind_search))
 				$ind_search = 'WHERE ';
 			else
 				$ind_search .= ' AND ';
 			//add column SQL
-			$ind_search = $this->getColumnByKey($i).' LIKE \'%?%\' ';
-			$ind_search_args[] = $col_search[$i];
+			$ind_search = '`'.$this->getColumnByKey($i).'` LIKE ? ';
+			$ind_search_args[] = '%'.$col_search[$i].'%';
 		}
 		//build where statement
 		$this->sql_where = $global_search.$ind_search;
@@ -281,10 +300,25 @@ class Datatables {
 	}
 
 	public function process(){
-		//run queries
-		$results = $this->db->fetchAll($this->sql_query);
-		$count_results = $this->db->fetch($this->sql_query_length);
-		$count_total = $this->db->fetch($this->sql_query_total_length);
+		if(!is_null($this->data_callback)){
+			list($results,$count_results,$count_total) = call_user_func_array(
+				 $this->data_callback
+				,array_merge(
+					array(
+						 $this->columns
+						,array($this->sql_where,$this->sql_where_args)
+						,$this->sql_order
+						,$this->sql_limit
+					)
+					,$this->data_callback_args
+				)
+			);
+		} else {
+			//run queries
+			$results = $this->db->fetchAll($this->sql_query);
+			$count_results = $this->db->fetch($this->sql_query_length);
+			$count_total = $this->db->fetch($this->sql_query_total_length);
+		}
 		//setup result array
 		$this->result = array_merge(
 			$this->params
@@ -295,8 +329,11 @@ class Datatables {
 			)
 		);
 		//use openlss/lib-datamodel to format output
-		foreach($results as $row)
-			$this->result['aaData'][] = $this->datamodel::setup($row)->_getAll();
+		foreach($results as $row){
+			$this->result['aaData'][] = call_user_func(
+				$this->datamodel.'::_setup',$row
+			)->_getColumns($this->getColumns(),\LSS\DataModel::KEYS_NUMERIC);
+		}
 		return $this;
 	}
 
