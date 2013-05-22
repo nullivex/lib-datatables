@@ -222,13 +222,13 @@ class DataTables {
 			//check if we are sorting this column
 			if($sortable != "true") continue;
 			//build SQL for sorting
-			$this->sql_order .= '`'.$this->getColumnByKey($col_key).'`';
-			$this->sql_order .= ($sort_dir === 'asc' ? 'asc' : 'desc').',';
+			$this->sql_order .= ' `'.$this->getColumnByKey($col_key).'` ';
+			$this->sql_order .= ($sort_dir === 'asc' ? 'ASC' : 'DESC').',';
 		}
 		//trim excess commas and space
-		$this->sql_order = trim(rtrim($this->sql_order,',')).' ';
+		$this->sql_order = ' '.trim(rtrim($this->sql_order,',')).' ';
 		//if nothing got appended clear the clause (more of a fail-safe)
-		if($this->sql_order == 'ORDER BY ')
+		if($this->sql_order == ' ORDER BY ')
 			$this->sql_order = null;
 		return $this;
 	}
@@ -265,7 +265,7 @@ class DataTables {
 				$global_search_args[] = '%'.$search_string.'%';
 			}
 			//trim excess OR stmts
-			$global_search = trim(rtrim($global_search,'OR '));
+			$global_search = ' '.trim(rtrim($global_search,'OR '));
 			//close pars
 			$global_search .= ') ';
 		}
@@ -274,7 +274,7 @@ class DataTables {
 			if(!isset($col_searchable[$i]) || $col_searchable[$i] !== 'true' || empty($col_search[$i])) continue;
 			//setup our where string
 			if(is_null($global_search) && is_null($ind_search))
-				$ind_search = 'WHERE ';
+				$ind_search = ' WHERE ';
 			else
 				$ind_search .= ' AND ';
 			//add column SQL
